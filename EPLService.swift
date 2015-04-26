@@ -8,6 +8,8 @@
 
 import Foundation
 import CoreBluetooth
+import XCGLogger
+import BrightFutures
 
 // MARK: -
 // MARK: EPLServiceDelegate Protocol
@@ -26,7 +28,7 @@ import CoreBluetooth
 
 // MARK: -
 // MARK: EPLService Class
-public class EPLService: Printable {
+public class EPLService: SequenceType, Printable {
     // MARK: -
     // MARK: Subscript
     subscript(key: String) -> EPLCharacteristic? {
@@ -54,10 +56,19 @@ public class EPLService: Printable {
         }
     }
 
+    // Generator function, used for 'for-in' statement
+    public func generate() -> GeneratorOf<EPLCharacteristic> {
+        return GeneratorOf<EPLCharacteristic> {
+            for char in self.characteristics.values {
+                return char
+            }
+            return nil
+        }
+    }
+
     // MARK: -
     // MARK: Private variables
-
-
+    private let log = XCGLogger.defaultInstance()
 
     // MARK: -
     // MARK: Internal variables
@@ -65,6 +76,8 @@ public class EPLService: Printable {
     internal var cbPeripheral: CBPeripheral! {
         return self.cbService!.peripheral
     }
+
+    internal var characteristicDiscoveredPromise = Promise<String>()
 
     // MARK: -
     // MARK: Public variables
@@ -87,8 +100,8 @@ public class EPLService: Printable {
         }
     }
     public var characteristics: [String : EPLCharacteristic] = [:]
-    public var UUID: CBUUID! {
-        return self.cbService.UUID
+    public var UUID: String {
+        return self.cbService.UUID.UUIDString
     }
     public var isPrimary: Bool! {
         return self.cbService.isPrimary
@@ -99,11 +112,7 @@ public class EPLService: Printable {
             ret += ", isPrinmary = "
             ret = self.isPrimary! ? ret + "YES": ret + "NO"
             ret += ", UUID ="
-            if let uuid = self.UUID {
-                ret += self.UUID.UUIDString
-            } else {
-                ret += "(null)"
-            }
+            ret += self.UUID
             ret += ">"
             return ret
         }
@@ -120,5 +129,12 @@ public class EPLService: Printable {
     // MARK: Public Interface
     public init(cbService: CBService) {
         self.cbService = cbService
+    }
+
+    public func discoverCharacteristics() -> Future<String> {
+        self.log.debug("Discover characteristics for " + self.UUID)
+        self.cbPeripheral.discoverCharacteristics(nil, forService: self.cbService)
+
+        return self.characteristicDiscoveredPromise.future
     }
 }

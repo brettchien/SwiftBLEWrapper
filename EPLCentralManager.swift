@@ -33,6 +33,7 @@ public class EPLCentralManager: NSObject, CBCentralManagerDelegate {
     private let centralQueue = dispatch_queue_create("epl.ble.central.main", DISPATCH_QUEUE_SERIAL)
     private var _ble_ready: Bool = false
     private var scanOption:Dictionary<String, AnyObject> = [:]
+    private var block = Async.background {}
 
     // MARK: -
     // MARK: Internal variables
@@ -80,20 +81,23 @@ public class EPLCentralManager: NSObject, CBCentralManagerDelegate {
     
     public func scan(timeout: Double = 10.0, allowDuplicated: Bool = false) {
         self.log.debug("Start Scanning for peripherals")
-        self.scanOption[CBCentralManagerScanOptionAllowDuplicatesKey] = allowDuplicated
-        self.scanOption[CBCentralManagerScanOptionSolicitedServiceUUIDsKey] = []
-        self.cbCentralManager!.scanForPeripheralsWithServices(nil, options: self.scanOption)
-
         // insert a background delay then rise a timeout event
-        Async.main(after: timeout) {
+        self.block = Async.background(after: timeout) {
             self.log.debug("Scan Timeout")
             self.stopScan()
             self.delegate?.afterScanTimeout!(self)
         }
+
+        self.scanOption[CBCentralManagerScanOptionAllowDuplicatesKey] = allowDuplicated
+        self.scanOption[CBCentralManagerScanOptionSolicitedServiceUUIDsKey] = []
+        self.cbCentralManager!.scanForPeripheralsWithServices(nil, options: self.scanOption)
+
+//        block.wait(seconds: 0.1)
     }
     
     public func stopScan() {
         log.debug("Stop scanning")
+        self.block.cancel()
         self.cbCentralManager!.stopScan()
     }
 
@@ -131,7 +135,6 @@ public class EPLCentralManager: NSObject, CBCentralManagerDelegate {
             var ep = EPLPeripheral(cbPeripheral: p)
             self.discoveredPeripherals.removeValueForKey(p)
             self.connectedPeripherals[p] = ep
-            ep.cbPeripheral.discoverServices(nil)
             self.delegate?.didConnectedPeripheral(ep)
         }
     }

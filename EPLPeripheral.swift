@@ -8,6 +8,9 @@
 
 import Foundation
 import CoreBluetooth
+import XCGLogger
+import Async
+import BrightFutures
 
 public struct EPLECGNotifyStruct {
     typealias inputType = Array<UInt8>
@@ -50,13 +53,16 @@ func != (left: EPLPeripheral , right: EPLPeripheral) -> Bool{
 
 // MARK: -
 // MARK: EPLPeripheralDelegate Classs
-public class EPLPeripheral: NSObject, CBPeripheralDelegate{
-    // MARK: -
-    // MARK: Subscript
+public class EPLPeripheral: NSObject, SequenceType, CBPeripheralDelegate{
     // MARK: -
     // MARK: Subscript
     subscript(key: String) -> EPLService? {
         get {
+            // lazy discovery
+            if self.provideServices.count == 0 {
+                self.discoverServices()
+            }
+
             if let service = self.provideServices[key] {
                 return service
             } else {
@@ -80,14 +86,30 @@ public class EPLPeripheral: NSObject, CBPeripheralDelegate{
         }
     }
 
+    // Generator function, used for 'for-in' statement
+    public func generate() -> GeneratorOf<EPLService> {
+        let values = Array(self.provideServices.values)
+        var idx = 0
+        return GeneratorOf<EPLService> {
+            if idx < values.count {
+                return values[idx++]
+            }
+            return nil
+        }
+    }
+
     // MARK: -
     // MARK: Private variables
+    private var log = XCGLogger.defaultInstance()
     private var advertisementData: [NSObject : AnyObject]!
     private var provideServices: [String : EPLService] = [:]
     private var _rssi: NSNumber = 0
     private var _monitorRSSI: Bool = false
     private var rssiTimer: NSTimer?
 
+    // Promises
+    private var serviceDiscoveredPromise = Promise<String>()
+    private var rssiUpdatedPromise = Promise<NSNumber>()
 
     // MARK: -
     // MARK: Internal variables
@@ -146,6 +168,15 @@ public class EPLPeripheral: NSObject, CBPeripheralDelegate{
         }
     }
 
+    public var services: [EPLService]! {
+        get {
+            if self.provideServices.count > 0 {
+                return self.provideServices.values.array
+            }
+            return nil
+        }
+    }
+
     // MARK: -
     // MARK: Private interfaces
     private func rssiTimerFunc() {
@@ -177,36 +208,33 @@ public class EPLPeripheral: NSObject, CBPeripheralDelegate{
         return nil
     }
 
+    public func discoverServices() -> Future<String> {
+        self.log.debug("Discover services")
+        self.cbPeripheral.discoverServices(nil)
+
+        return self.serviceDiscoveredPromise.future
+    }
+
+    public func readRSSI() -> Future<NSNumber> {
+        self.log.debug("Read RSSI")
+        self.cbPeripheral.readRSSI()
+
+        return self.rssiUpdatedPromise.future
+    }
+
+
     // MARK: -
     // MARK: Delegate Methods
     public func peripheral(peripheral: CBPeripheral!, didDiscoverCharacteristicsForService service: CBService!, error: NSError!) {
         if let s = service {
-            println("didDiscover Characteristic for service: " + s.UUID.UUIDString)
+            self.log.debug("didDiscover Characteristics for service: " + s.UUID.UUIDString)
             let epls = self.provideServices[s.UUID.UUIDString]
-            if s.UUID.UUIDString == "57BD6EB5-4543-4732-8628-2788A7BF400F" {
-                epls?.dataSource = ECGIIProfile()
-            }
             if let chars = epls?.cbService.characteristics {
                 for char in chars {
                     let c = EPLCharacteristic(cbCharacteristic: char as! CBCharacteristic)
                     epls?[c.UUID] = c
-                    if let ds = epls?.dataSource?.dataSources[c.UUID] {
-                        c.dataSource = ds
-                    }
-                    if let delegate = epls?.dataSource?.delegates[c.UUID] {
-                        c.delegate = delegate
-                    }
-
-                    if epls?.name == "ECGII" {
-                        if c.readable {
-                            println(c.name + " readable")
-                            self.cbPeripheral.readValueForCharacteristic(c.cbCharacteristic)
-                        }
-                        if c.notify {
-                            self.cbPeripheral.setNotifyValue(true, forCharacteristic: c.cbCharacteristic)
-                        }
-                    }
                 }
+                epls?.characteristicDiscoveredPromise.success("didDiscoverCharacteristics")
             }
         }
     }
@@ -227,16 +255,15 @@ public class EPLPeripheral: NSObject, CBPeripheralDelegate{
 
     public func peripheral(peripheral: CBPeripheral!, didDiscoverServices error: NSError!) {
         if let p = peripheral {
-            println("didDiscoverServices for " + p.name)
+            self.log.debug("didDiscoverServices for " + p.name)
             if let services = p.services {
                 for service in services {
                     let cbs = service as! CBService
-                    self.provideServices[cbs.UUID.UUIDString] = EPLService(cbService: cbs)
+                    let epls = EPLService(cbService: cbs)
+                    self.provideServices[cbs.UUID.UUIDString] = epls
+                    self.log.debug(epls.UUID)
                 }
-                for (uuid, service) in self.provideServices {
-                    self.cbPeripheral.discoverCharacteristics(nil, forService: service.cbService)
-                }
-                self.cbPeripheral.readRSSI()
+                self.serviceDiscoveredPromise.success("discoverServicesSuccess")
             }
         }
     }
@@ -251,6 +278,8 @@ public class EPLPeripheral: NSObject, CBPeripheralDelegate{
         if let rssi = RSSI {
             println(String(format: "didReadRSSI: %4.1f", rssi.doubleValue))
             self.RSSI = rssi
+
+            self.rssiUpdatedPromise.success(self.RSSI)
         }
     }
 
@@ -267,7 +296,7 @@ public class EPLPeripheral: NSObject, CBPeripheralDelegate{
         if p != nil && char != nil && ep != nil{
             let char_uuidString = char.UUID.UUIDString
             let serv_uuidString = char.service.UUID.UUIDString
-            println("didUpdateValueCharacteristic: " + char_uuidString)
+            self.log.debug("didUpdateValueCharacteristic: " + char_uuidString)
             if let service = self.provideServices[serv_uuidString], let epc = service[char_uuidString] {
                 epc.cbCharacteristic = char
                 if let delegate = epc.delegate {
@@ -275,6 +304,7 @@ public class EPLPeripheral: NSObject, CBPeripheralDelegate{
                         epc.delegate?.characteristic(epc, notifyData: char.value)
                     } else {
                         epc.delegate?.characteristic(epc, updateData: char.value)
+                        epc.characteristicReadPromise.success(epc)
                     }
                 }
             }

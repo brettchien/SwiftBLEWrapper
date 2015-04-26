@@ -8,6 +8,8 @@
 
 import Foundation
 import CoreBluetooth
+import XCGLogger
+import BrightFutures
 
 // MARK: -
 // MARK: EPLCharacteristicDelegate Protocol
@@ -30,6 +32,7 @@ import CoreBluetooth
 public class EPLCharacteristic: NSObject {
     // MARK: -
     // MARK: Private variables
+    private var log = XCGLogger.defaultInstance()
     private var _readable:Bool = false
     private var _writable:Bool = false
     private var _notify:Bool = false
@@ -57,6 +60,8 @@ public class EPLCharacteristic: NSObject {
             return nil
         }
     }
+
+    internal var characteristicReadPromise = Promise<EPLCharacteristic>()
     
     // MARK: -
     // MARK: Public variables
@@ -138,5 +143,11 @@ public class EPLCharacteristic: NSObject {
         self.cbCharacteristic = cbCharacteristic
         self.property = self.cbCharacteristic.properties
         self.processProperties()
+    }
+
+    public func read() -> Future<EPLCharacteristic> {
+        self.log.debug(String(format: "Read Characteristic%@ conenct", self.name))
+        self.cbService.peripheral.readValueForCharacteristic(self.cbCharacteristic)
+        return self.characteristicReadPromise.future
     }
 }
