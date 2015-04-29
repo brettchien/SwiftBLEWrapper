@@ -25,6 +25,9 @@ import BrightFutures
 // MARK: EPLCharacteristicDataSource Protocol
 @objc public protocol EPLCharacteristicDataSource {
     var name: String {get}
+    optional var bytecount: Int {get}
+
+    optional func serialize(data: [String : AnyObject]) -> NSData?
 }
 
 // MARK: -
@@ -47,9 +50,6 @@ public class EPLCharacteristic: NSObject {
         }
         set(newValue) {
             self._cbCharacteristic = newValue
-            if let delegate = self.delegate {
-                self.data = self.delegate?.characteristic!(self, parseData: self._cbCharacteristic.value)
-            }
         }
     }
     internal var property: CBCharacteristicProperties
@@ -60,8 +60,16 @@ public class EPLCharacteristic: NSObject {
             return nil
         }
     }
+    internal var cbPeripheral: CBPeripheral! {
+        if let char = self.cbCharacteristic {
+            return char.service.peripheral
+        } else {
+            return nil
+        }
+    }
 
     internal var characteristicReadPromise = Promise<EPLCharacteristic>()
+    internal var characteristicWritePromise = Promise<EPLCharacteristic>()
     
     // MARK: -
     // MARK: Public variables
@@ -89,16 +97,23 @@ public class EPLCharacteristic: NSObject {
         return self._writable
     }
     
-    public var notify: Bool {
+    public var notifiable: Bool {
         return self._notify
     }
     
-    public var indicate: Bool {
+    public var indicatable: Bool {
         return self._indicate
     }
 
     public var isNotifying: Bool {
-        return self.cbCharacteristic.isNotifying
+        get {
+            return self.cbCharacteristic.isNotifying
+        }
+        set(enabled) {
+            if enabled && !self.cbCharacteristic.isNotifying {
+                self.cbPeripheral.setNotifyValue(enabled , forCharacteristic: self.cbCharacteristic)
+            }
+        }
     }
 
     public var UUID: String {
@@ -146,8 +161,47 @@ public class EPLCharacteristic: NSObject {
     }
 
     public func read() -> Future<EPLCharacteristic> {
-        self.log.debug(String(format: "Read Characteristic%@ conenct", self.name))
+        self.log.debug(String(format: "Read Characteristic(%@) content", self.name))
         self.cbService.peripheral.readValueForCharacteristic(self.cbCharacteristic)
+        return self.characteristicReadPromise.future
+    }
+
+    public func write(data: NSData) -> Future<EPLCharacteristic> {
+        // length check
+        if let length = self.dataSource?.bytecount {
+            if data.length > length {
+                self.log.error(String(format: "Require length %d but get %d", length, data.length))
+            }
+        }
+        var count = data.length / sizeof(UInt8)
+        self.log.debug {
+            var content = ""
+            if let delegate = self.delegate {
+                content = delegate.characteristic!(self, parseData: data)
+            } else {
+                content = "0x"
+                var count = data.length / sizeof(UInt8)
+                var array = [UInt8](count: count, repeatedValue: 0)
+                data.getBytes(&array, length: count)
+                for datum in array {
+                    content += String(format: "%02X", datum)
+                }
+            }
+            return String(format: "Write Characteristic(%@) content with %@", self.name, content)
+        }
+        self.cbService.peripheral.writeValue(data, forCharacteristic: self.cbCharacteristic, type: CBCharacteristicWriteType.WithResponse)
+
+        return self.characteristicWritePromise.future
+    }
+
+    public func write(data: [String : AnyObject]) -> Future<EPLCharacteristic> {
+        if let dataSource = self.dataSource {
+            if let sentData = dataSource.serialize!(data) {
+                return self.write(sentData)
+            }
+            self.characteristicWritePromise.failure(NSError(domain: "Data is not converted", code: 1, userInfo: nil))
+        }
+        self.characteristicWritePromise.failure(NSError(domain: "DataSource does not exist", code: 2, userInfo: nil))
         return self.characteristicReadPromise.future
     }
 }

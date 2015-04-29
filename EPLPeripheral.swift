@@ -27,6 +27,7 @@ public struct EPLECGNotifyStruct {
             }
         }
     }
+
 }
 
 public protocol EPLECGNotifyDelegate {
@@ -284,8 +285,22 @@ public class EPLPeripheral: NSObject, SequenceType, CBPeripheralDelegate{
     }
 
     public func peripheral(peripheral: CBPeripheral!, didUpdateNotificationStateForCharacteristic characteristic: CBCharacteristic!, error: NSError!) {
-        if let char = characteristic {
-            println("didUpdateNotificationStateForCharacteristic: " + char.UUID.UUIDString)
+        let p = peripheral
+        let char = characteristic
+        let ep = EPLCentralManager.sharedInstance.connectedPeripherals[p]
+        if p != nil && char != nil && ep != nil{
+            let char_uuidString = char.UUID.UUIDString
+            let serv_uuidString = char.service.UUID.UUIDString
+            if let service = self.provideServices[serv_uuidString], let epc = service[char_uuidString] {
+                epc.cbCharacteristic = char
+                var msg = "didUpdateNotificationStateForCharacteristic: "
+                if let datasource = epc.dataSource {
+                    msg += epc.name
+                } else {
+                    msg += char_uuidString
+                }
+                self.log.debug(msg)
+            }
         }
     }
 
@@ -296,19 +311,23 @@ public class EPLPeripheral: NSObject, SequenceType, CBPeripheralDelegate{
         if p != nil && char != nil && ep != nil{
             let char_uuidString = char.UUID.UUIDString
             let serv_uuidString = char.service.UUID.UUIDString
-            self.log.debug("didUpdateValueCharacteristic: " + char_uuidString)
             if let service = self.provideServices[serv_uuidString], let epc = service[char_uuidString] {
                 epc.cbCharacteristic = char
+                if let datasource = epc.dataSource {
+                    self.log.debug("didUpdateValueCharacteristic: " + epc.name)
+                } else {
+                    self.log.debug("didUpdateValueCharacteristic: " + char_uuidString)
+                }
                 if let delegate = epc.delegate {
+                    epc.data = delegate.characteristic!(epc, parseData: char.value)
                     if epc.isNotifying {
-                        epc.delegate?.characteristic(epc, notifyData: char.value)
+                        delegate.characteristic(epc, notifyData: char.value)
                     } else {
-                        epc.delegate?.characteristic(epc, updateData: char.value)
+                        delegate.characteristic(epc, updateData: char.value)
                         epc.characteristicReadPromise.success(epc)
                     }
                 }
             }
-
         }
     }
 

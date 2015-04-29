@@ -18,6 +18,7 @@ import Async
     func afterBLEIsReady(central: EPLCentralManager!)
     func didDiscoverPeripherals(central: EPLCentralManager!)
     func didConnectedPeripheral(peripheral: EPLPeripheral!)
+    func didDisconnectedPeripheral(peripheral: EPLPeripheral!)
     
     // optional functions
     optional func afterScanTimeout(central: EPLCentralManager!)
@@ -96,15 +97,19 @@ public class EPLCentralManager: NSObject, CBCentralManagerDelegate {
     }
     
     public func stopScan() {
-        log.debug("Stop scanning")
+        self.log.debug("Stop scanning")
         self.block.cancel()
         self.cbCentralManager!.stopScan()
     }
 
     public func connect(peripheral: EPLPeripheral, options: [NSObject: AnyObject]! = nil) {
-        var msg = "Connect to " + peripheral.name
-        log.debug(msg)
+        self.log.debug("Connect to " + peripheral.name)
         self.cbCentralManager?.connectPeripheral(peripheral.cbPeripheral, options: options)
+    }
+
+    public func disconnect(peripheral: EPLPeripheral) {
+        self.log.debug("Disconnect with " + peripheral.name)
+        self.cbCentralManager?.cancelPeripheralConnection(peripheral.cbPeripheral)
     }
     
     // MARK: -
@@ -144,6 +149,7 @@ public class EPLCentralManager: NSObject, CBCentralManagerDelegate {
         if let p = peripheral {
             var ep = EPLPeripheral(cbPeripheral: p)
             self.connectedPeripherals.removeValueForKey(p)
+            self.delegate?.didDisconnectedPeripheral(ep)
         }
     }
     
