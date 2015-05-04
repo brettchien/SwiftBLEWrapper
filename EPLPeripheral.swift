@@ -12,28 +12,6 @@ import XCGLogger
 import Async
 import BrightFutures
 
-public struct EPLECGNotifyStruct {
-    typealias inputType = Array<UInt8>
-    var readings: [Int] = Array(count: 6, repeatedValue: 0)
-
-    init(bytearray: inputType) {
-        autoreleasepool {
-            for i in 0..<6 {
-                var index = i * 3
-                var reading: UInt32 = UInt32(bytearray[index]) << 24
-                reading += UInt32(bytearray[index + 1]) << 16
-                reading += UInt32(bytearray[index + 2]) << 8
-                self.readings[i] = Int(Int32( bitPattern: reading) >> 8)
-            }
-        }
-    }
-
-}
-
-public protocol EPLECGNotifyDelegate {
-    func didUpdateECGReadings(newReadings: EPLECGNotifyStruct)
-}
-
 // MARK: -
 // MARK: EPLPeripheralDelegate Protocol
 @objc public protocol EPLPeripheralDelegate {
@@ -119,7 +97,6 @@ public class EPLPeripheral: NSObject, SequenceType, CBPeripheralDelegate{
     // MARK: -
     // MARK: Public variables
     public var delegate: EPLPeripheralDelegate?
-    public var ecgDelegate: EPLECGNotifyDelegate?
     public var identifier: NSUUID! {
         get {
             if let p = self.cbPeripheral {
@@ -193,10 +170,12 @@ public class EPLPeripheral: NSObject, SequenceType, CBPeripheralDelegate{
     // MARK: Public interfaces
     public init(cbPeripheral: CBPeripheral!, advData: [NSObject : AnyObject]! = nil){
         super.init()
-        self.cbPeripheral = cbPeripheral
-        self.cbPeripheral.delegate = self
-        if let adv = advData {
-            self.advertisementData = advData
+        if let peripheral = cbPeripheral {
+            self.cbPeripheral = peripheral
+            self.cbPeripheral.delegate = self
+            if let adv = advData {
+                self.advertisementData = advData
+            }
         }
     }
 

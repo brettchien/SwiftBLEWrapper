@@ -19,7 +19,7 @@ import Async
     func didDiscoverPeripherals(central: EPLCentralManager!)
     func didConnectedPeripheral(peripheral: EPLPeripheral!)
     func didDisconnectedPeripheral(peripheral: EPLPeripheral!)
-    
+
     // optional functions
     optional func afterScanTimeout(central: EPLCentralManager!)
 }
@@ -38,7 +38,7 @@ public class EPLCentralManager: NSObject, CBCentralManagerDelegate {
 
     // MARK: -
     // MARK: Internal variables
-    
+
     // MARK: -
     // MARK: Public variables
     // singleton, there's only one EPLCentralManager for the whole system
@@ -48,7 +48,7 @@ public class EPLCentralManager: NSObject, CBCentralManagerDelegate {
         }
         return Static.instance
     }
-    
+
     public var ble_ready: Bool {
         get {
             return self._ble_ready
@@ -60,14 +60,14 @@ public class EPLCentralManager: NSObject, CBCentralManagerDelegate {
             }
         }
     }
-    
+
     public var delegate: EPLCentralManagerDelegate?
     public var connectedPeripherals: [CBPeripheral :EPLPeripheral] = [:]
     public var discoveredPeripherals: [CBPeripheral : EPLPeripheral] = [:]
-    
+
     // MARK: -
     // MARK: Private Interface
-    
+
     // MARK: -
     // MARK: Internal Interface
 
@@ -78,8 +78,8 @@ public class EPLCentralManager: NSObject, CBCentralManagerDelegate {
         super.init()
         self.cbCentralManager =  CBCentralManager(delegate: self, queue: self.centralQueue)
     }
-    
-    
+
+
     public func scan(timeout: Double = 10.0, allowDuplicated: Bool = false) {
         self.log.debug("Start Scanning for peripherals")
         // insert a background delay then rise a timeout event
@@ -93,9 +93,9 @@ public class EPLCentralManager: NSObject, CBCentralManagerDelegate {
         self.scanOption[CBCentralManagerScanOptionSolicitedServiceUUIDsKey] = []
         self.cbCentralManager!.scanForPeripheralsWithServices(nil, options: self.scanOption)
 
-//        block.wait(seconds: 0.1)
+        //        block.wait(seconds: 0.1)
     }
-    
+
     public func stopScan() {
         self.log.debug("Stop scanning")
         self.block.cancel()
@@ -111,7 +111,7 @@ public class EPLCentralManager: NSObject, CBCentralManagerDelegate {
         self.log.debug("Disconnect with " + peripheral.name)
         self.cbCentralManager?.cancelPeripheralConnection(peripheral.cbPeripheral)
     }
-    
+
     // MARK: -
     // MARK: CBCentralManagerDelegate Methods
     public func centralManagerDidUpdateState(central: CBCentralManager!) {
@@ -133,26 +133,30 @@ public class EPLCentralManager: NSObject, CBCentralManagerDelegate {
             break
         }
     }
-    
+
     public func centralManager(central: CBCentralManager!, didConnectPeripheral peripheral: CBPeripheral!) {
-        log.debug("didConnect")
-        if let p = peripheral {
-            var ep = EPLPeripheral(cbPeripheral: p)
-            self.discoveredPeripherals.removeValueForKey(p)
-            self.connectedPeripherals[p] = ep
-            self.delegate?.didConnectedPeripheral(ep)
+        self.log.debug("didConnect")
+        Async.main {
+            if let p = peripheral {
+                let ep = EPLPeripheral(cbPeripheral: p)
+                self.discoveredPeripherals.removeValueForKey(p)
+                self.connectedPeripherals[p] = ep
+                self.delegate?.didConnectedPeripheral(ep)
+            }
         }
     }
-    
+
     public func centralManager(central: CBCentralManager!, didDisconnectPeripheral peripheral: CBPeripheral!, error: NSError!) {
-        log.debug("disconnect")
+        if let err = error {
+            self.log.error(String(format: "Disconnect with Error: %@", err))
+        }
         if let p = peripheral {
             var ep = EPLPeripheral(cbPeripheral: p)
             self.connectedPeripherals.removeValueForKey(p)
             self.delegate?.didDisconnectedPeripheral(ep)
         }
     }
-    
+
     public func centralManager(central: CBCentralManager!, didDiscoverPeripheral peripheral: CBPeripheral!, advertisementData: [NSObject : AnyObject]!, RSSI: NSNumber!) {
         if let p = peripheral {
             var ep = EPLPeripheral(cbPeripheral: p, advData: advertisementData)
@@ -161,18 +165,18 @@ public class EPLCentralManager: NSObject, CBCentralManagerDelegate {
             self.delegate?.didDiscoverPeripherals(self)
         }
     }
-    
+
     public func centralManager(central: CBCentralManager!, didFailToConnectPeripheral peripheral: CBPeripheral!, error: NSError!) {
-        log.debug("didFailToConnectPeripheral")
+        self.log.error("didFailToConnectPeripheral")
         if let p = peripheral {
             var ep = EPLPeripheral(cbPeripheral: p)
             self.discoveredPeripherals.removeValueForKey(p)
             self.connectedPeripherals.removeValueForKey(p)
         }
     }
-    
+
     public func centralManager(central: CBCentralManager!, didRetrieveConnectedPeripherals peripherals: [AnyObject]!) {
-        log.debug("didRetrieveConnected")
+        self.log.debug("didRetrieveConnected")
         if let ps = peripherals {
             for p in ps {
                 let p = p as! CBPeripheral
@@ -181,7 +185,7 @@ public class EPLCentralManager: NSObject, CBCentralManagerDelegate {
             }
         }
     }
-    
+
     public func centralManager(central: CBCentralManager!, didRetrievePeripherals peripherals: [AnyObject]!) {
         println("didRetrieve")
         if let ps = peripherals {
@@ -192,7 +196,7 @@ public class EPLCentralManager: NSObject, CBCentralManagerDelegate {
             }
         }
     }
-    
+
     public func centralManager(central: CBCentralManager!, willRestoreState dict: [NSObject : AnyObject]!) {
         println("wilRestore")
     }
