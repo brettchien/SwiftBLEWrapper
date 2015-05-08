@@ -24,18 +24,22 @@ import BrightFutures
 // MARK: -
 // MARK: EPLCharacteristicValueUpdate protocol
 @objc public protocol EPLCharacteristicValueUpdate {
-    func valueUpdate(newValue: AnyObject)
+    func valueUpdate(UUID: String, newValue: AnyObject)
+    optional func rawDataUpdate(UUID: String, rawData: NSData)
 }
 
 // MARK: -
 // MARK: EPLCharacteristicDataSource Protocol
 @objc public protocol EPLCharacteristicDataSource {
+    var UUID: String {get}
     var name: String {get}
     optional var bytecount: Int {get}
     optional var valueUpdateReceivers: [EPLCharacteristicValueUpdate] {get set}
+    optional var rawDataUpdateReceivers: [EPLCharacteristicValueUpdate] {get set}
 
     optional func serialize(data: [String : AnyObject]) -> NSData?
     optional func addValueUpdateReceiver(receiver: EPLCharacteristicValueUpdate)
+    optional func addRawDataUpdateReceiver(receiver: EPLCharacteristicValueUpdate)
 }
 
 // MARK: -
