@@ -158,10 +158,10 @@ public class EPLCentralManager: NSObject, CBCentralManagerDelegate {
     }
 
     public func centralManager(central: CBCentralManager!, didDiscoverPeripheral peripheral: CBPeripheral!, advertisementData: [NSObject : AnyObject]!, RSSI: NSNumber!) {
-        if let p = peripheral {
+        if let p = peripheral, rssi = RSSI {
             var ep = EPLPeripheral(cbPeripheral: p, advData: advertisementData)
             self.discoveredPeripherals[p] = ep
-            log.debug(String(format: "didDiscover %@ (RSSI: %4.1f)", p.name, RSSI))
+            self.log.debug(String(format: "didDiscover %@", p))
             self.delegate?.didDiscoverPeripherals(self)
         }
     }
