@@ -79,6 +79,15 @@ public class EPLCentralManager: NSObject, CBCentralManagerDelegate {
         self.cbCentralManager =  CBCentralManager(delegate: self, queue: self.centralQueue)
     }
 
+    public func reset() {
+        Async.main{
+            self.cbCentralManager = nil
+        }.main(after: 1.0) {
+            self.cbCentralManager = CBCentralManager(delegate: self, queue: self.centralQueue)
+        }
+
+    }
+
 
     public func scan(timeout: Double = 10.0, allowDuplicated: Bool = false) {
         self.log.debug("Start Scanning for peripherals")
