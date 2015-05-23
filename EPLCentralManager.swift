@@ -9,7 +9,7 @@
 import Foundation
 import CoreBluetooth
 import XCGLogger
-import Async
+//import Async
 
 // MARK: -
 // MARK: EPLCentralManagerDelegate Protocol

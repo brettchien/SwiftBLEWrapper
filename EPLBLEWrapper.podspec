@@ -15,7 +15,6 @@ Pod::Spec.new do |s|
   s.dependency 'XCGLogger'
 # The real dependency
 #  s.dependency 'Async', :git => 'https://github.com/duemunk/Async.git'
-  s.dependency 'Async'
   s.dependency 'BrightFutures'
   s.requires_arc = true
 end
