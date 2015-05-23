@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name         = "EPLBLEWrapper"
-  s.version      = "0.1"
+  s.version      = "0.1.1"
   s.summary      = "Swift BLE Wrapper for easier profile handling"
   s.homepage     = "https://github.com/brettchien/SwiftBLEWrapper"
   s.license      = { :type => "MIT" }
@@ -9,7 +9,7 @@ Pod::Spec.new do |s|
 #  s.osx.deployment_target = '10.10'
   s.ios.deployment_target = '8.0'
 
-  s.source       = { :git => "https://github.com/brettchien/SwiftBLEWrapper.git" }
+  s.source       = { :git => "https://github.com/brettchien/SwiftBLEWrapper.git", :tag => "#{s.version}"}
   s.source_files  = "*.swift"
   s.frameworks = "Foundation", "UIKit", "CoreBluetooth"
   s.dependency 'XCGLogger'
