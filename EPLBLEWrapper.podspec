@@ -6,7 +6,7 @@ Pod::Spec.new do |s|
   s.license      = { :type => "MIT" }
   s.author       = { "Brett Chien" => "brett.chien@gmail.com" }
 
-  s.osx.deployment_target = '10.10'
+#  s.osx.deployment_target = '10.10'
   s.ios.deployment_target = '8.0'
 
   s.source       = { :git => "https://github.com/brettchien/SwiftBLEWrapper.git" }
