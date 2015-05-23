@@ -4,6 +4,15 @@ a Swift BLE wrapper for easier profile handing.
 
 # Installation
 
+
+
+A dependency, [Async](https://github.com/duemunk/Async), is not available on cocoapods yet.
+One need to add the following in Podfile
+
+```
+pod 'Async', :git => 'https://github.com/duemunk/Async.git'
+```
+
 # Usage
 
 ## Profile Handling

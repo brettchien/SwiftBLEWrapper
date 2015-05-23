@@ -9,10 +9,12 @@ Pod::Spec.new do |s|
   s.osx.deployment_target = '10.10'
   s.ios.deployment_target = '8.0'
 
-  s.source       = { :git => "https://github.com/brettchien/SwiftBLEWrapper" }
+  s.source       = { :git => "https://github.com/brettchien/SwiftBLEWrapper.git" }
   s.source_files  = "*.swift"
-  s.frameworks = "Foundation", "CoreBluetooth"
+  s.frameworks = "Foundation", "UIKit", "CoreBluetooth"
   s.dependency 'XCGLogger'
+# The real dependency
+#  s.dependency 'Async', :git => 'https://github.com/duemunk/Async.git'
   s.dependency 'Async'
   s.dependency 'BrightFutures'
   s.requires_arc = true
