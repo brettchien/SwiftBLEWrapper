@@ -9,7 +9,6 @@
 import Foundation
 import CoreBluetooth
 import XCGLogger
-import Async
 import BrightFutures
 
 // MARK: -

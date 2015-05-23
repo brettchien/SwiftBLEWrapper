@@ -9,6 +9,7 @@
 import Foundation
 import CoreBluetooth
 import XCGLogger
+import UIKit
 
 // MARK: -
 // MARK: EPLPeripheralManager Class
