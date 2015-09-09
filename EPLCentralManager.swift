@@ -16,6 +16,7 @@ import XCGLogger
 @objc public protocol EPLCentralManagerDelegate {
     // required functions
     func afterBLEIsReady(central: EPLCentralManager!)
+    func afterBLEIsNotReady(central: EPLCentralManager!)
     func didDiscoverPeripherals(central: EPLCentralManager!)
     func didConnectedPeripheral(peripheral: EPLPeripheral!)
     func didDisconnectedPeripheral(peripheral: EPLPeripheral!)
@@ -57,6 +58,8 @@ public class EPLCentralManager: NSObject, CBCentralManagerDelegate {
             self._ble_ready = newValue
             if self._ble_ready == true {
                 delegate?.afterBLEIsReady(self)
+            } else {
+                delegate?.afterBLEIsNotReady(self)
             }
         }
     }
@@ -124,22 +127,11 @@ public class EPLCentralManager: NSObject, CBCentralManagerDelegate {
     // MARK: -
     // MARK: CBCentralManagerDelegate Methods
     public func centralManagerDidUpdateState(central: CBCentralManager!) {
-        self.ble_ready = false
         switch self.cbCentralManager!.state {
-        case .Unauthorized:
-            break
-        case .Unknown:
-            break
-        case .Unsupported:
-            break
-        case .PoweredOff:
-            break
         case .PoweredOn:
             self.ble_ready = true
-        case .Resetting:
-            break
         default:
-            break
+            self.ble_ready = false
         }
     }
 

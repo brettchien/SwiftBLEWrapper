@@ -80,6 +80,8 @@ public class EPLCharacteristic: NSObject {
         }
     }
 
+    internal var _data: String? = nil
+
     internal var characteristicReadPromise = Promise<EPLCharacteristic>()
     internal var characteristicWritePromise = Promise<EPLCharacteristic>()
     
@@ -95,10 +97,22 @@ public class EPLCharacteristic: NSObject {
         return ""
     }
 
-    public var data: String?
+    public var data: String {
+        get {
+        if let delegate = self.delegate {
+            return delegate.characteristic!(self, parseData: self.rawData!)
+        }
+        return ""
+        }
 
+        set(newValue) {
+            _data = newValue
+        }
+    }
+    
     public var rawData: NSData? {
-        return self.cbCharacteristic.value
+        var data: NSData = _cbCharacteristic.value()
+        return data
     }
     
     public var readable: Bool {
@@ -132,12 +146,7 @@ public class EPLCharacteristic: NSObject {
         return self.cbCharacteristic.UUID.UUIDString
     }
 
-    public var value: String {
-        if let delegate = self.delegate {
-            return delegate.characteristic!(self, parseData: self.rawData!)
-        }
-        return ""
-    }
+
     
     
     // MARK: -

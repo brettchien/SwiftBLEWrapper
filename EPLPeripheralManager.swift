@@ -6,10 +6,17 @@
 //  Copyright (c) 2015 Ting-Chou Chien. All rights reserved.
 //
 
-import Foundation
+#if TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE
+    import Foundation
+    import UIKit
+#else
+    import Cocoa
+#endif
+
 import CoreBluetooth
 import XCGLogger
-import UIKit
+
+
 
 // MARK: -
 // MARK: EPLPeripheralManager Class
@@ -33,6 +40,8 @@ public class EPLPeripheralManager: NSObject, CBPeripheralManagerDelegate {
         return Static.instance
     }
 
+    public var deviceName: NSString? = nil
+
     // MARK: -
     // MARK: Private Interface
 
@@ -44,6 +53,11 @@ public class EPLPeripheralManager: NSObject, CBPeripheralManagerDelegate {
     public override init() {
         super.init()
         self.cbPeripheralManager = CBPeripheralManager(delegate: self, queue: self.peripheralQueue)
+        #if TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE
+            self.deviceName = UIDevice.currentDevice().name
+        #else
+            self.deviceName = NSProcessInfo.processInfo().hostName
+        #endif
     }
 
     public convenience init(ANCSEnabled: Bool) {
@@ -72,9 +86,14 @@ extension EPLPeripheralManager {
             case .PoweredOn:
                 if self._ANCSEnabled {
                     var advertisement = [
-                        CBAdvertisementDataLocalNameKey: UIDevice.currentDevice().name
+                        CBAdvertisementDataLocalNameKey: "EPLPeripheralManager"
                     ]
-                    self.cbPeripheralManager?.startAdvertising(advertisement)
+                    if let name = self.deviceName {
+                        advertisement[CBAdvertisementDataLocalNameKey] = name as String
+                    }
+                    if let pm = self.cbPeripheralManager {
+                        pm.startAdvertising(advertisement)
+                    }
                 }
                 break
             }

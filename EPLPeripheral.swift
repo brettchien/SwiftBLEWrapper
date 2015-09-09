@@ -297,11 +297,11 @@ public class EPLPeripheral: NSObject, SequenceType, CBPeripheralDelegate{
                     self.log.debug("didUpdateValueCharacteristic: " + char_uuidString)
                 }
                 if let delegate = epc.delegate {
-                    epc.data = delegate.characteristic!(epc, parseData: char.value)
+                    epc.data = delegate.characteristic!(epc, parseData: char.value())
                     if epc.isNotifying {
-                        delegate.characteristic(epc, notifyData: char.value)
+                        delegate.characteristic(epc, notifyData: char.value())
                     } else {
-                        delegate.characteristic(epc, updateData: char.value)
+                        delegate.characteristic(epc, updateData: char.value())
                         epc.characteristicReadPromise.success(epc)
                     }
                 }
