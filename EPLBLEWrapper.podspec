@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name         = "EPLBLEWrapper"
-  s.version      = "0.1.1"
+  s.version      = "0.2"
   s.summary      = "Swift BLE Wrapper for easier profile handling"
   s.homepage     = "https://github.com/brettchien/SwiftBLEWrapper"
   s.license      = { :type => "MIT" }
@@ -15,6 +15,6 @@ Pod::Spec.new do |s|
   s.dependency 'XCGLogger'
 # The real dependency
 #  s.dependency 'Async', :git => 'https://github.com/duemunk/Async.git'
-  s.dependency 'BrightFutures', '= 1.0.1'
+  s.dependency 'BrightFutures'
   s.requires_arc = true
 end
