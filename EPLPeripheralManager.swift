@@ -56,7 +56,7 @@ public class EPLPeripheralManager: NSObject, CBPeripheralManagerDelegate {
 extension EPLPeripheralManager {
     // MARK: -
     // MARK: Monitoring Changes to the Peripheral Manager's State
-    public func peripheralManagerDidUpdateState(peripheral: CBPeripheralManager!) {
+    public func peripheralManagerDidUpdateState(peripheral: CBPeripheralManager) {
         if let cbPeripheralManager = self.cbPeripheralManager {
             switch cbPeripheralManager.state {
             case .Unknown:
@@ -71,7 +71,7 @@ extension EPLPeripheralManager {
                 break
             case .PoweredOn:
                 if self._ANCSEnabled {
-                    var advertisement = [
+                    let advertisement = [
                         CBAdvertisementDataLocalNameKey: UIDevice.currentDevice().name
                     ]
                     self.cbPeripheralManager?.startAdvertising(advertisement)
@@ -80,44 +80,36 @@ extension EPLPeripheralManager {
             }
         }
     }
-
-    public func peripheralManager(peripheral: CBPeripheralManager!, willRestoreState dict: [NSObject : AnyObject]!) {
-
+    
+    public func peripheralManager(peripheral: CBPeripheralManager, willRestoreState dict: [String : AnyObject]) {
     }
 
     // MARK: -
     // MARK: Adding Services
-    public func peripheralManager(peripheral: CBPeripheralManager!, didAddService service: CBService!, error: NSError!) {
-
+    public func peripheralManager(peripheral: CBPeripheralManager, didAddService service: CBService, error: NSError?) {
     }
 
     // MARK: -
     // MARK: Advertising Peripheral Data
-    public func peripheralManagerDidStartAdvertising(peripheral: CBPeripheralManager!, error: NSError!) {
-
+    public func peripheralManagerDidStartAdvertising(peripheral: CBPeripheralManager, error: NSError?) {
     }
 
     // MARK: -
     // MARK: Monitoring Subscriptions to Characteristic Values
-    public func peripheralManager(peripheral: CBPeripheralManager!, central: CBCentral!, didSubscribeToCharacteristic characteristic: CBCharacteristic!) {
-
+    public func peripheralManager(peripheral: CBPeripheralManager, central: CBCentral, didSubscribeToCharacteristic characteristic: CBCharacteristic) {
     }
 
-    public func peripheralManager(peripheral: CBPeripheralManager!, central: CBCentral!, didUnsubscribeFromCharacteristic characteristic: CBCharacteristic!) {
-
+    public func peripheralManager(peripheral: CBPeripheralManager, central: CBCentral, didUnsubscribeFromCharacteristic characteristic: CBCharacteristic) {
     }
-
-    public func peripheralManagerIsReadyToUpdateSubscribers(peripheral: CBPeripheralManager!) {
-
+    
+    public func peripheralManagerIsReadyToUpdateSubscribers(peripheral: CBPeripheralManager) {
     }
-
+    
     // MARK: -
     // MARK: Receving Read and Write Requests
-    public func peripheralManager(peripheral: CBPeripheralManager!, didReceiveReadRequest request: CBATTRequest!) {
-
+    public func peripheralManager(peripheral: CBPeripheralManager, didReceiveReadRequest request: CBATTRequest) {
     }
-
-    public func peripheralManager(peripheral: CBPeripheralManager!, didReceiveWriteRequests requests: [AnyObject]!) {
-
+    
+    public func peripheralManager(peripheral: CBPeripheralManager, didReceiveWriteRequests requests: [CBATTRequest]) {
     }
 }

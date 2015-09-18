@@ -28,7 +28,7 @@ import BrightFutures
 
 // MARK: -
 // MARK: EPLService Class
-public class EPLService: SequenceType, Printable {
+public class EPLService: SequenceType, CustomStringConvertible {
     // MARK: -
     // MARK: Subscript
     subscript(key: String) -> EPLCharacteristic? {
@@ -57,8 +57,8 @@ public class EPLService: SequenceType, Printable {
     }
 
     // Generator function, used for 'for-in' statement
-    public func generate() -> GeneratorOf<EPLCharacteristic> {
-        return GeneratorOf<EPLCharacteristic> {
+    public func generate() -> AnyGenerator<EPLCharacteristic> {
+        return anyGenerator {
             for char in self.characteristics.values {
                 return char
             }
@@ -77,7 +77,7 @@ public class EPLService: SequenceType, Printable {
         return self.cbService!.peripheral
     }
 
-    internal var characteristicDiscoveredPromise = Promise<String>()
+    internal var characteristicDiscoveredPromise = Promise<String, NoError>()
 
     // MARK: -
     // MARK: Public variables
@@ -131,8 +131,8 @@ public class EPLService: SequenceType, Printable {
         self.cbService = cbService
     }
 
-    public func discoverCharacteristics() -> Future<String> {
-        self.log.debug("Discover characteristics for " + self.UUID)
+    public func discoverCharacteristics() -> Future<String, NoError> {
+        self.log.debug("Discover characteristics for \(self.UUID)")
         self.cbPeripheral.discoverCharacteristics(nil, forService: self.cbService)
 
         return self.characteristicDiscoveredPromise.future

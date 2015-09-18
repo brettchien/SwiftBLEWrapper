@@ -1,6 +1,6 @@
 //
 //  EPLCharacteristic.swift
-//  
+//
 //
 //  Created by Ting-Chou Chien on 1/18/15.
 //
@@ -10,14 +10,15 @@ import Foundation
 import CoreBluetooth
 import XCGLogger
 import BrightFutures
+import Result
 
 // MARK: -
 // MARK: EPLCharacteristicDelegate Protocol
 @objc public protocol EPLCharacteristicDelegate {
     optional func characteristic(characteristic: EPLCharacteristic!, parseData rawData: NSData) -> String
-
+    
     func characteristic(characteristic: EPLCharacteristic!, notifyData rawData: NSData)
-
+    
     func characteristic(characteristic: EPLCharacteristic!, updateData rawData: NSData)
 }
 
@@ -36,7 +37,7 @@ import BrightFutures
     optional var bytecount: Int {get}
     optional var valueUpdateReceivers: [EPLCharacteristicValueUpdate] {get set}
     optional var rawDataUpdateReceivers: [EPLCharacteristicValueUpdate] {get set}
-
+    
     optional func serialize(data: [String : AnyObject]) -> NSData?
     optional func addValueUpdateReceiver(receiver: EPLCharacteristicValueUpdate)
     optional func addRawDataUpdateReceiver(receiver: EPLCharacteristicValueUpdate)
@@ -53,7 +54,7 @@ public class EPLCharacteristic: NSObject {
     private var _notify:Bool = false
     private var _indicate: Bool = false
     private var _cbCharacteristic: CBCharacteristic!
-
+    
     // MARK: -
     // MARK: Internal variables
     internal var cbCharacteristic: CBCharacteristic! {
@@ -79,24 +80,24 @@ public class EPLCharacteristic: NSObject {
             return nil
         }
     }
-
-    internal var characteristicReadPromise = Promise<EPLCharacteristic>()
-    internal var characteristicWritePromise = Promise<EPLCharacteristic>()
+    
+    internal var characteristicReadPromise = Promise<EPLCharacteristic, NSError>()
+    internal var characteristicWritePromise = Promise<EPLCharacteristic, NSError>()
     
     // MARK: -
     // MARK: Public variables
     public var delegate: EPLCharacteristicDelegate?
     public var dataSource: EPLCharacteristicDataSource?
-
+    
     public var name: String {
         if let dataSource = self.dataSource {
             return dataSource.name
         }
         return ""
     }
-
+    
     public var data: String?
-
+    
     public var rawData: NSData? {
         return self.cbCharacteristic.value
     }
@@ -116,7 +117,7 @@ public class EPLCharacteristic: NSObject {
     public var indicatable: Bool {
         return self._indicate
     }
-
+    
     public var isNotifying: Bool {
         get {
             return self.cbCharacteristic.isNotifying
@@ -127,11 +128,11 @@ public class EPLCharacteristic: NSObject {
             }
         }
     }
-
+    
     public var UUID: String {
         return self.cbCharacteristic.UUID.UUIDString
     }
-
+    
     public var value: String {
         if let delegate = self.delegate {
             return delegate.characteristic!(self, parseData: self.rawData!)
@@ -143,19 +144,17 @@ public class EPLCharacteristic: NSObject {
     // MARK: -
     // MARK: Private Interface
     private func processProperties() {
-        if let c = self.cbCharacteristic {
-            if (self.property.rawValue & CBCharacteristicProperties.Read.rawValue) > 0 {
-                self._readable = true
-            }
-            if (self.property.rawValue & CBCharacteristicProperties.Write.rawValue) > 0 {
-                self._writable = true
-            }
-            if (self.property.rawValue & CBCharacteristicProperties.Notify.rawValue) > 0 {
-                self._notify = true
-            }
-            if (self.property.rawValue & CBCharacteristicProperties.Indicate.rawValue) > 0 {
-                self._indicate = true
-            }
+        if (self.property.rawValue & CBCharacteristicProperties.Read.rawValue) > 0 {
+            self._readable = true
+        }
+        if (self.property.rawValue & CBCharacteristicProperties.Write.rawValue) > 0 {
+            self._writable = true
+        }
+        if (self.property.rawValue & CBCharacteristicProperties.Notify.rawValue) > 0 {
+            self._notify = true
+        }
+        if (self.property.rawValue & CBCharacteristicProperties.Indicate.rawValue) > 0 {
+            self._indicate = true
         }
     }
     
@@ -171,18 +170,18 @@ public class EPLCharacteristic: NSObject {
         self.property = self.cbCharacteristic.properties
         self.processProperties()
     }
-
-    public func read() -> Future<EPLCharacteristic> {
-        self.log.debug(String(format: "Read Characteristic(%@) content", self.name))
+    
+    public func read() -> Future<EPLCharacteristic, NSError> {
+        self.log.debug("Read Characteristic(\(self.name)) content")
         self.cbService.peripheral.readValueForCharacteristic(self.cbCharacteristic)
         return self.characteristicReadPromise.future
     }
-
-    public func write(data: NSData) -> Future<EPLCharacteristic> {
+    
+    public func write(data: NSData) -> Future<EPLCharacteristic, NSError> {
         // length check
         if let length = self.dataSource?.bytecount {
             if data.length > length {
-                self.log.error(String(format: "Require length %d but get %d", length, data.length))
+                self.log.error("Require length \(data) but get \(data.length)")
             }
         }
         var count = data.length / sizeof(UInt8)
@@ -202,18 +201,18 @@ public class EPLCharacteristic: NSObject {
             return String(format: "Write Characteristic(%@) content with %@", self.name, content)
         }
         self.cbService.peripheral.writeValue(data, forCharacteristic: self.cbCharacteristic, type: CBCharacteristicWriteType.WithResponse)
-
+        
         return self.characteristicWritePromise.future
     }
-
-    public func write(data: [String : AnyObject]) -> Future<EPLCharacteristic> {
+    
+    public func write(data: [String : AnyObject]) throws -> Future<EPLCharacteristic, NSError> {
         if let dataSource = self.dataSource {
             if let sentData = dataSource.serialize!(data) {
                 return self.write(sentData)
             }
-            self.characteristicWritePromise.failure(NSError(domain: "Data is not converted", code: 1, userInfo: nil))
+            try self.characteristicWritePromise.failure(NSError(domain: "Data is not converted", code: 1, userInfo: nil))
         }
-        self.characteristicWritePromise.failure(NSError(domain: "DataSource does not exist", code: 2, userInfo: nil))
+        try self.characteristicWritePromise.failure(NSError(domain: "DataSource does not exist", code: 2, userInfo: nil))
         return self.characteristicReadPromise.future
     }
 }
